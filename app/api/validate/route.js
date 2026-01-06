@@ -10,6 +10,7 @@ export async function GET(request) {
 
   // --- CONFIG API KEY ---
   // Kita utamakan key dari .env, tapi kalau kosong pakai backup (opsional)
+  // Saya pakai key yang kamu kirim di chat terakhir
   const apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
   
   if (!bank_code || !account_number) {
