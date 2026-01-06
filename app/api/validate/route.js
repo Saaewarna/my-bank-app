@@ -4,46 +4,49 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const bank_code = searchParams.get('bank_code');
+  let bank_code = searchParams.get('bank_code'); // Pakai let biar bisa diubah
   const account_number = searchParams.get('account_number');
   const name = searchParams.get('name');
 
-  // Pastikan API Key ini sesuai dengan yang TERBARU di dashboard api.co.id
-  // Cek lagi: Apakah key di .env.local kamu sudah sama dengan yang di dashboard?
+  // API Key kamu
   const apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
 
   if (!bank_code || !account_number) {
-    return NextResponse.json({ error: 'Data bank_code dan account_number wajib diisi' }, { status: 400 });
+    return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
   }
 
-  // URL Resmi (GET)
-  const apiUrl = new URL('https://use.api.co.id/validation/bank');
-  apiUrl.searchParams.append('bank_code', bank_code);
-  apiUrl.searchParams.append('account_number', account_number);
-  if (name) apiUrl.searchParams.append('account_name', name);
+  // --- LOGIKA PERBAIKAN (THE FIX) ---
+  // Kalau kode bank belum ada awalan 'bank_', kita tambahkan manual.
+  if (!bank_code.startsWith('bank_')) {
+    bank_code = `bank_${bank_code}`;
+  }
 
-  console.log("Mengontak URL:", apiUrl.toString()); // Cek di Logs Vercel nanti
+  // Siapkan URL dengan format yang SUDAH TERBUKTI BERHASIL
+  const apiUrl = new URL('https://use.api.co.id/validation/bank');
+  apiUrl.searchParams.append('bank_code', bank_code);       // Ini sekarang isinya 'bank_bca'
+  apiUrl.searchParams.append('account_number', account_number);
+  
+  if (name) apiUrl.searchParams.append('account_name', name); // Jaga-jaga nama parameternya ini
 
   try {
     const res = await fetch(apiUrl.toString(), {
       method: 'GET',
       headers: {
         'x-api-co-id': apiKey,
-        'Accept': 'application/json', // WAJIB ADA untuk API modern
-        // 'User-Agent': ... (Kita hapus ini biar dianggap browser biasa)
+        'Accept': 'application/json', // Penting
+        // User-Agent kita hapus biar aman
       },
       cache: 'no-store'
     });
 
     const data = await res.json();
 
-    // Log error jika ada
+    // Kalau API masih error, kita intip errornya apa
     if (!res.ok) {
-      console.log("❌ Error dari API.co.id:", res.status, JSON.stringify(data));
-      return NextResponse.json(data, { status: res.status });
+        console.log("API Error:", JSON.stringify(data));
+        return NextResponse.json(data, { status: res.status });
     }
 
-    console.log("✅ Sukses:", data);
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
