@@ -3,56 +3,61 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  let bank_code = searchParams.get('bank_code'); // Pakai let biar bisa diubah
-  const account_number = searchParams.get('account_number');
-  const name = searchParams.get('name');
-
-  // API Key kamu
-  const apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
-
-  if (!bank_code || !account_number) {
-    return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
-  }
-
-  // --- LOGIKA PERBAIKAN (THE FIX) ---
-  // Kalau kode bank belum ada awalan 'bank_', kita tambahkan manual.
-  if (!bank_code.startsWith('bank_')) {
-    bank_code = `bank_${bank_code}`;
-  }
-
-  // Siapkan URL dengan format yang SUDAH TERBUKTI BERHASIL
-  const apiUrl = new URL('https://use.api.co.id/validation/bank');
-  apiUrl.searchParams.append('bank_code', bank_code);       // Ini sekarang isinya 'bank_bca'
-  apiUrl.searchParams.append('account_number', account_number);
-  
-  if (name) apiUrl.searchParams.append('account_name', name); // Jaga-jaga nama parameternya ini
-
   try {
-    const res = await fetch(apiUrl.toString(), {
+    const { searchParams } = new URL(request.url);
+    
+    // 1. AMBIL & BERSIHKAN INPUT (TRIM SPASI)
+    let bank_code = (searchParams.get('bank_code') || '').trim();
+    const account_number = (searchParams.get('account_number') || '').trim();
+    const name = (searchParams.get('name') || '').trim();
+
+    // 2. AMBIL & BERSIHKAN API KEY
+    // Gunakan fallback ke key UoO1... kalau ENV kosong
+    let apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
+    apiKey = apiKey.trim(); // Wajib trim biar ga ada enter/spasi
+
+    if (!bank_code || !account_number) {
+      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    // 3. LOGIKA PREFIX (Pastikan tidak dobel)
+    // Kalau user ngetik "bank_bca", jangan jadi "bank_bank_bca"
+    if (!bank_code.startsWith('bank_')) {
+      bank_code = `bank_${bank_code}`;
+    }
+
+    // 4. BUAT URL SECARA MANUAL (String Concatenation)
+    // Kita tiru persis cara kerja script 'tes-nama.js' yang sukses
+    const baseUrl = 'https://use.api.co.id/validation/bank';
+    const finalUrl = `${baseUrl}?bank_code=${bank_code}&account_number=${account_number}`;
+    
+    // Log untuk debug di Vercel
+    console.log(`🚀 Requesting: ${finalUrl}`);
+    console.log(`🔑 Using Key: ${apiKey.substring(0, 5)}...`);
+
+    // 5. EKSEKUSI FETCH
+    const res = await fetch(finalUrl, {
       method: 'GET',
       headers: {
         'x-api-co-id': apiKey,
-        'Accept': 'application/json', // Penting
-        // User-Agent kita hapus biar aman
+        'Accept': 'application/json'
       },
       cache: 'no-store'
     });
 
     const data = await res.json();
 
-    // Kalau API masih error, kita intip errornya apa
     if (!res.ok) {
-        console.log("API Error:", JSON.stringify(data));
+        console.log("❌ API Error Body:", JSON.stringify(data));
         return NextResponse.json(data, { status: res.status });
     }
 
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
-    console.error("Server Error:", error);
+    console.error("🔥 Server Error:", error);
     return NextResponse.json(
-      { error: 'Gagal menghubungi server', details: error.message },
+      { error: 'Internal Server Error', details: error.message },
       { status: 500 }
     );
   }
