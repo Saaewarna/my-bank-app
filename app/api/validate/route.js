@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic'; // Wajib biar nggak di-cache Vercel
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -8,39 +8,38 @@ export async function GET(request) {
   const account_number = searchParams.get('account_number');
   const name = searchParams.get('name');
 
-  // --- CONFIG API KEY ---
-  // Kita utamakan key dari .env, tapi kalau kosong pakai backup (opsional)
-  // Saya pakai key yang kamu kirim di chat terakhir
+  // API Key kamu
   const apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
   
   if (!bank_code || !account_number) {
     return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
   }
 
-  // Siapkan URL (Pastikan pakai HTTPS)
-  const apiUrl = new URL('https://use.api.co.id/validation/bank');
-  apiUrl.searchParams.append('bank_code', bank_code);
-  apiUrl.searchParams.append('account_number', account_number);
-  
-  // Masukkan nama kalau user ngisi (Fitur validasi nama)
-  if (name) apiUrl.searchParams.append('account_name', name); 
+  // --- PERUBAHAN UTAMA DI SINI ---
+  // Kita ubah target ke POST supaya lebih stabil sesuai dokumentasi
+  const apiUrl = 'https://use.api.co.id/validation/bank';
 
   try {
-    const res = await fetch(apiUrl.toString(), {
-      method: 'GET',
+    const res = await fetch(apiUrl, {
+      method: 'POST', // Ganti jadi POST
       headers: {
         'x-api-co-id': apiKey,
-        // ❌ JANGAN PAKAI 'Content-Type': 'application/json' DI SINI! (Ini biang keroknya)
-        'User-Agent': 'PostmanRuntime/7.26.8' // Opsional: Biar dianggap browser/client valid
+        'Content-Type': 'application/json', // Wajib ada kalau POST
+        'User-Agent': 'PostmanRuntime/7.26.8'
       },
+      // Data dikirim sebagai JSON Body, bukan parameter URL
+      body: JSON.stringify({
+        bank_code: bank_code,
+        account_number: account_number,
+        account_name: name || undefined // Kirim hanya jika ada
+      }),
       cache: 'no-store'
     });
 
     const data = await res.json();
     
-    // Cek error dari API External
     if (!res.ok) {
-        console.log("Error dari API:", JSON.stringify(data));
+        console.log("Error API External:", JSON.stringify(data));
         return NextResponse.json(data, { status: res.status });
     }
 
