@@ -8,41 +8,42 @@ export async function GET(request) {
   const account_number = searchParams.get('account_number');
   const name = searchParams.get('name');
 
-  // API Key kamu
+  // Pastikan API Key ini sesuai dengan yang TERBARU di dashboard api.co.id
+  // Cek lagi: Apakah key di .env.local kamu sudah sama dengan yang di dashboard?
   const apiKey = process.env.API_CO_ID_KEY || 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
-  
+
   if (!bank_code || !account_number) {
-    return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    return NextResponse.json({ error: 'Data bank_code dan account_number wajib diisi' }, { status: 400 });
   }
 
-  // --- PERUBAHAN UTAMA DI SINI ---
-  // Kita ubah target ke POST supaya lebih stabil sesuai dokumentasi
-  const apiUrl = 'https://use.api.co.id/validation/bank';
+  // URL Resmi (GET)
+  const apiUrl = new URL('https://use.api.co.id/validation/bank');
+  apiUrl.searchParams.append('bank_code', bank_code);
+  apiUrl.searchParams.append('account_number', account_number);
+  if (name) apiUrl.searchParams.append('account_name', name);
+
+  console.log("Mengontak URL:", apiUrl.toString()); // Cek di Logs Vercel nanti
 
   try {
-    const res = await fetch(apiUrl, {
-      method: 'POST', // Ganti jadi POST
+    const res = await fetch(apiUrl.toString(), {
+      method: 'GET',
       headers: {
         'x-api-co-id': apiKey,
-        'Content-Type': 'application/json', // Wajib ada kalau POST
-        'User-Agent': 'PostmanRuntime/7.26.8'
+        'Accept': 'application/json', // WAJIB ADA untuk API modern
+        // 'User-Agent': ... (Kita hapus ini biar dianggap browser biasa)
       },
-      // Data dikirim sebagai JSON Body, bukan parameter URL
-      body: JSON.stringify({
-        bank_code: bank_code,
-        account_number: account_number,
-        account_name: name || undefined // Kirim hanya jika ada
-      }),
       cache: 'no-store'
     });
 
     const data = await res.json();
-    
+
+    // Log error jika ada
     if (!res.ok) {
-        console.log("Error API External:", JSON.stringify(data));
-        return NextResponse.json(data, { status: res.status });
+      console.log("❌ Error dari API.co.id:", res.status, JSON.stringify(data));
+      return NextResponse.json(data, { status: res.status });
     }
 
+    console.log("✅ Sukses:", data);
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
