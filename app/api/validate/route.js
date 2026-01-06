@@ -10,7 +10,7 @@ export async function GET(request) {
   const name = searchParams.get('name');
 
   // 1. CEK API KEY (Lihat di Logs nanti)
-  const apiKey = '8sqrhsP2Vok5s6C77Qz6vaiovJevQTdeUcZUXzletZEH1gwa6O';
+  const apiKey = 'UoO1JoFkgaPwL8wAdYNuv7OdVMDlqk3uymvEehEuESV9DvU1pK';
   console.log("--- DEBUG START ---");
   console.log("Status API Key:", apiKey ? "ADA (Terisi)" : "KOSONG (Gawat!)");
   console.log("Mencoba validasi:", bank_code, account_number);
